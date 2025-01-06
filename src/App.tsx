@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import PdfButton from "./components/pdfButton";
 
 const DEPLOYED_URL = "https://applicationbackend.jalikoi.rw/api/v1";
@@ -8,14 +8,13 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editFormData, setEditFormData] = useState({});
-  const [selectedApplicantId, setSelectedApplicantId] = useState(null);
-  const [applicants, setApplicants] = useState([]);
+  const [editFormData, setEditFormData] = useState<{ id: string; first_name?: string; last_name?: string; [key: string]: string | undefined }>({ id: '' });
+  const [applicants, setApplicants] = useState<{ id: string; first_name: string; last_name: string; dob: string; nid: string; phone: string; created_at: string; decision?: string }[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchApplicants = async () => {
+  const fetchApplicants = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -26,24 +25,30 @@ export default function App() {
       const data = await response.json();
       setApplicants(data.items || data);
       setTotalItems(data.total || data.length);
-    } catch (err) {
-      setError(err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("An unknown error occurred");
+      }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [searchQuery, currentPage]);
 
   useEffect(() => {
     fetchApplicants();
-  }, [searchQuery, currentPage]);
+  }, [searchQuery, currentPage, fetchApplicants]);
 
-  const handlePageChange = (newPage) => {
-    setCurrentPage(newPage);
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
   };
 
   const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
 
-  const handleUpdateApplicant = async (updatedData) => {
+  const handleUpdateApplicant = async (updatedData: { id: string; first_name?: string; last_name?: string; [key: string]: string | undefined }) => {
     try {
       const response = await fetch(
         `${DEPLOYED_URL}/application/${updatedData.id}`,
@@ -61,12 +66,12 @@ export default function App() {
     }
   };
 
-  const handleSearch = (e) => {
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
     setCurrentPage(1);
   };
 
-  const handleEditClick = (applicant) => {
+  const handleEditClick = (applicant: { id: string; first_name: string; last_name: string; dob: string; nid: string; phone: string; created_at: string; decision?: string }) => {
     setEditFormData(applicant);
     setIsEditModalOpen(true);
   };
@@ -75,13 +80,13 @@ export default function App() {
     handleUpdateApplicant(editFormData);
   };
 
-  const handleInputChange = (name, value) => {
+  const handleInputChange = (name: string, value: string) => {
     setEditFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleDownloadPdf = (applicantId) => {
-    setSelectedApplicantId(applicantId);
-  };
+  // const handleDownloadPdf = (applicantId) => {
+  //   setSelectedApplicantId(applicantId);
+  // };
 
   if (error) {
     return <div className="p-4 text-red-600">Error loading applicants: {error}</div>;
@@ -139,7 +144,9 @@ export default function App() {
                         {new Date(applicant.created_at).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4">
+                        <label htmlFor={`status-${applicant.id}`} className="sr-only">Status</label>
                         <select
+                          id={`status-${applicant.id}`}
                           value={applicant.decision || "PENDING"}
                           onChange={(e) => handleInputChange("status", e.target.value)}
                           className="w-full px-3 py-2 border rounded-md"
@@ -199,15 +206,17 @@ export default function App() {
                     value={editFormData.first_name}
                     onChange={(e) => handleInputChange("first_name", e.target.value)}
                     className="mt-1 w-full px-3 py-2 border rounded-md"
+                    placeholder="First Name"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Last Name</label>
                   <input
                     value={editFormData.last_name}
                     onChange={(e) => handleInputChange("last_name", e.target.value)}
                     className="mt-1 w-full px-3 py-2 border rounded-md"
+                    placeholder="Last Name"
                   />
+
                 </div>
                 <div className="flex justify-end space-x-2">
                   <button

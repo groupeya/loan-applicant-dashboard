@@ -1,9 +1,34 @@
-import React, { useState } from "react";
 import { Select, Spin } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faPenToSquare, faDownload } from "@fortawesome/free-solid-svg-icons";
 
 const { Option } = Select;
+
+interface Applicant {
+  id: string;
+  first_name: string;
+  last_name: string;
+  dob: string;
+  nid: string;
+  phone: string;
+  created_at: string;
+  decision?: string;
+}
+
+interface ApplicantsUIProps {
+  isLoading: boolean;
+  data: Applicant[] | null;
+  paginatedData: Applicant[];
+  searchQuery: string;
+  handleSearch: (query: string) => void;
+  handleViewRider: (applicant: Applicant) => void;
+  handleEditRider: (applicant: Applicant) => void;
+  viewRider: (applicant: Applicant) => void;
+  handleDownloadPdf: (id: string) => void;
+  handleDecisionChange: (id: string, value: string) => void;
+  updateDecisionMutation: { isLoading: boolean };
+  statuses: { [key: string]: string };
+}
 
 function ApplicantsUI({
   isLoading,
@@ -13,15 +38,13 @@ function ApplicantsUI({
   handleSearch,
   handleViewRider,
   handleEditRider,
-  viewRiderInfo,
-  viewRider,
   handleDownloadPdf,
   handleDecisionChange,
   updateDecisionMutation,
   statuses,
-}) {
+}: ApplicantsUIProps) {
   // Helper function to format dates as YYYY-MM-DD
-  const formatYYYYMMDD = (date) => {
+  const formatYYYYMMDD = (date: string | Date) => {
     const d = new Date(date);
     return d.toISOString().split("T")[0];
   };

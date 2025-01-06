@@ -1,6 +1,10 @@
 import { useFetchPdf, triggerPdfDownload } from "../api/pdf";
 
-const PdfButton = ({ applicantId }) => {
+interface PdfButtonProps {
+  applicantId: string;
+}
+
+const PdfButton = ({ applicantId }: PdfButtonProps) => {
   const { data: pdfBlob, isLoading, error } = useFetchPdf(applicantId);
 
   const handleDownload = () => {
