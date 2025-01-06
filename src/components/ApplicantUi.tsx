@@ -8,7 +8,7 @@ interface Applicant {
   id: string;
   first_name: string;
   last_name: string;
-  dob: string;
+  moto_leasing: string
   nid: string;
   phone: string;
   created_at: string;
@@ -70,7 +70,7 @@ function ApplicantsUI({
             <tr>
               <th className="p-2">First Name</th>
               <th className="p-2">Last Name</th>
-              <th className="p-2">DOB</th>
+              <th className="p-2">Motobike</th>
               <th className="p-2">NID</th>
               <th className="p-2">Phone</th>
               <th className="p-2">Created at (YYYY-MM-DD)</th>
@@ -92,7 +92,7 @@ function ApplicantsUI({
                   <td className="px-2 py-3">{applicant.first_name}</td>
                   <td className="px-2 py-3">{applicant.last_name}</td>
                   <td className="px-2 py-3">
-                    {new Date(applicant.dob).toLocaleDateString()}
+                    {applicant.moto_leasing}
                   </td>
                   <td className="px-2 py-3">{applicant.nid}</td>
                   <td className="px-2 py-3">{applicant.phone}</td>

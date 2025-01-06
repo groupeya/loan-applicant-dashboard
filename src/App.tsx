@@ -1,44 +1,64 @@
-import React, { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import PdfButton from "./components/pdfButton";
+import { useQuery, useMutation } from "@tanstack/react-query";
 
 const DEPLOYED_URL = "https://applicationbackend.jalikoi.rw/api/v1";
 const ITEMS_PER_PAGE = 10;
+
 
 export default function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editFormData, setEditFormData] = useState<{ id: string; first_name?: string; last_name?: string; [key: string]: string | undefined }>({ id: '' });
-  const [applicants, setApplicants] = useState<{ id: string; first_name: string; last_name: string; dob: string; nid: string; phone: string; created_at: string; decision?: string }[]>([]);
-  const [totalItems, setTotalItems] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    id: "",
+    first_name: "",
+    last_name: "",
+  });
 
-  const fetchApplicants = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
+  const {
+    data,
+    isLoading,
+    error: isError,
+  } = useQuery({
+    queryKey: ["applicants", searchQuery, currentPage],
+    queryFn: async () => {
       const response = await fetch(
-        `${DEPLOYED_URL}/application/search?query=${encodeURIComponent(searchQuery)}&page=${currentPage}&per_page=${ITEMS_PER_PAGE}`
+        `${DEPLOYED_URL}/application/search?query=${encodeURIComponent(
+          searchQuery
+        )}&page=${currentPage}&per_page=${ITEMS_PER_PAGE}`
       );
       if (!response.ok) throw new Error("Failed to fetch applicants");
-      const data = await response.json();
-      setApplicants(data.items || data);
-      setTotalItems(data.total || data.length);
-    } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("An unknown error occurred");
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  }, [searchQuery, currentPage]);
+      return response.json();
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000
+  });
 
-  useEffect(() => {
-    fetchApplicants();
-  }, [searchQuery, currentPage, fetchApplicants]);
+  console.log(data)
+
+  const updateMutation = useMutation({
+    mutationFn: async (updatedData: typeof editFormData) => {
+      const response = await fetch(
+        `${DEPLOYED_URL}/application/${updatedData.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updatedData),
+        }
+      );
+      if (!response.ok) throw new Error("Failed to update applicant");
+      return response.json();
+    },
+    onSuccess: () => {
+      setIsEditModalOpen(false);
+    },
+  });
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+    setCurrentPage(1);
+  };
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -46,50 +66,23 @@ export default function App() {
     }
   };
 
-  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
-
-  const handleUpdateApplicant = async (updatedData: { id: string; first_name?: string; last_name?: string; [key: string]: string | undefined }) => {
-    try {
-      const response = await fetch(
-        `${DEPLOYED_URL}/application/${updatedData.id}`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updatedData),
-        }
-      );
-      if (!response.ok) throw new Error("Failed to update applicant");
-      await fetchApplicants();
-      setIsEditModalOpen(false);
-    } catch (error) {
-      console.error("Failed to update applicant", error);
-    }
-  };
-
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-    setCurrentPage(1);
-  };
-
-  const handleEditClick = (applicant: { id: string; first_name: string; last_name: string; dob: string; nid: string; phone: string; created_at: string; decision?: string }) => {
+  const handleEditClick = (applicant: typeof editFormData) => {
     setEditFormData(applicant);
     setIsEditModalOpen(true);
   };
 
   const handleEditSubmit = () => {
-    handleUpdateApplicant(editFormData);
+    updateMutation.mutate(editFormData);
   };
 
   const handleInputChange = (name: string, value: string) => {
     setEditFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // const handleDownloadPdf = (applicantId) => {
-  //   setSelectedApplicantId(applicantId);
-  // };
+  const totalPages = Math.ceil((data?.total || 0) / ITEMS_PER_PAGE);
 
-  if (error) {
-    return <div className="p-4 text-red-600">Error loading applicants: {error}</div>;
+  if (isError) {
+    return <div className="p-4 text-red-600">Error loading applicants: {isError.message}</div>;
   }
 
   return (
@@ -119,7 +112,7 @@ export default function App() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Name</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">DOB</th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Product</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">NID</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Phone</th>
                     <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Created</th>
@@ -128,7 +121,7 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
-                  {applicants?.map((applicant) => (
+                  {data?.map((applicant: { id: string; first_name: string; last_name: string; moto_leasing: { id: number, type: string }; nid: string; phone: string; created_at: string; decision?: string }) => (
                     <tr key={applicant.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div className="font-medium text-gray-900">
@@ -136,7 +129,7 @@ export default function App() {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
-                        {new Date(applicant.dob).toLocaleDateString()}
+                        {applicant.moto_leasing.type}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">{applicant.nid}</td>
                       <td className="px-6 py-4 text-sm text-gray-500">{applicant.phone}</td>
@@ -148,7 +141,9 @@ export default function App() {
                         <select
                           id={`status-${applicant.id}`}
                           value={applicant.decision || "PENDING"}
-                          onChange={(e) => handleInputChange("status", e.target.value)}
+                          onChange={(e) =>
+                            handleInputChange("status", e.target.value)
+                          }
                           className="w-full px-3 py-2 border rounded-md"
                         >
                           <option value="APPROVED">Approved</option>
@@ -201,10 +196,14 @@ export default function App() {
               <h3 className="mb-4 text-lg font-medium">Edit Applicant</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">First Name</label>
+                  <label className="block text-sm font-medium text-gray-700">
+                    First Name
+                  </label>
                   <input
                     value={editFormData.first_name}
-                    onChange={(e) => handleInputChange("first_name", e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("first_name", e.target.value)
+                    }
                     className="mt-1 w-full px-3 py-2 border rounded-md"
                     placeholder="First Name"
                   />
@@ -212,11 +211,12 @@ export default function App() {
                 <div>
                   <input
                     value={editFormData.last_name}
-                    onChange={(e) => handleInputChange("last_name", e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("last_name", e.target.value)
+                    }
                     className="mt-1 w-full px-3 py-2 border rounded-md"
                     placeholder="Last Name"
                   />
-
                 </div>
                 <div className="flex justify-end space-x-2">
                   <button
