@@ -3,6 +3,7 @@ import PdfButton from "./components/pdfButton";
 import { useQuery, useMutation } from "@tanstack/react-query";
 
 const DEPLOYED_URL = "https://applicationbackend.jalikoi.rw/api/v1";
+//const LOCAL_URL = "http://localhost:8090/api/v1";
 const ITEMS_PER_PAGE = 10;
 
 
@@ -14,6 +15,7 @@ export default function App() {
     id: "",
     first_name: "",
     last_name: "",
+    phone: "",
   });
 
   const {
@@ -40,7 +42,7 @@ export default function App() {
   const updateMutation = useMutation({
     mutationFn: async (updatedData: typeof editFormData) => {
       const response = await fetch(
-        `${DEPLOYED_URL}/application/${updatedData.id}`,
+        `${DEPLOYED_URL}/application/applicant/${updatedData.id}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -218,6 +220,16 @@ export default function App() {
                     placeholder="Last Name"
                   />
                 </div>
+                <div>
+                  <input
+                    value={editFormData.phone}
+                    onChange={(e) =>
+                      handleInputChange("phone", e.target.value)
+                    }
+                    className="mt-1 w-full px-3 py-2 border rounded-md"
+                    placeholder="Last Name"
+                  />
+                </div>
                 <div className="flex justify-end space-x-2">
                   <button
                     onClick={() => setIsEditModalOpen(false)}
@@ -229,7 +241,7 @@ export default function App() {
                     onClick={handleEditSubmit}
                     className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                   >
-                    Save Changes
+                  {updateMutation.isPending ? 'Editing...' : 'Edit'}
                   </button>
                 </div>
               </div>
